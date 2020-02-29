@@ -36,12 +36,14 @@ FE is fuel economy
 ```{r}
 cars2010 <- cars2010[order(cars2010$EngDispl),]
 cars2011 <- cars2011[order(cars2011$EngDispl),]
+
 cars2010a <- cars2010
 cars2010a$Year <- "2010 Model Year"
 cars2011a <- cars2011
 cars2011a$Year <- "2011 Model Year"
+remove(cars2010,cars2011)
 plotData <- rbind(cars2010a, cars2011a)
-plotTheme <- bookTheme(FALSE)
+plotTheme <- bookTheme(TRUE)
 plotTheme$plot.symbol$col <- rgb(.2, .2, .2, .5)
 plotTheme$plot.symbol$cex <- 0.7
 trellis.par.set(plotTheme)
@@ -66,6 +68,14 @@ t.test(cars2010a$FE, cars2011a$FE)
 Question #1:
 No evidence of any improvement/difference in mean FE between 2010 and 2011
 
+As an aside, is ther a difference between average fuel efficiencies of 2010 and 2012?
+
+```{r}
+t.test(cars2010a$FE, cars2012$FE)
+par(mrow=2)
+hist(cars2010a$FE)
+hist(cars2012$FE)
+```
 
 
 
@@ -78,11 +88,12 @@ names(cars2010a)
 try transmissons = AV, AM6 and AM7
 
 ```{r}
-testTranny = filter(cars2010a, Transmission %in% c('AV','AM7'))
+testTranny = filter(cars2010a, Transmission %in% c('AV','AM7','AM6'))
 trannyModel = glm(FE ~ Transmission, data = testTranny)
 summary(trannyModel)
 
 print(mean(testTranny$FE))
+
 
 ```
 
@@ -121,6 +132,11 @@ may benefit from a second order term
 model2 = glm(FE~ EngDispl + I(EngDispl^2), data = cars2010a)
 
 summary(model2)
+
+w = cars2011a$EngDispl
+z = model2$coefficients[1] + model2$coefficients[2]*x+model2$coefficients[3]*x^2
+plot(cars2011a$EngDispl, cars2011a$FE, xlab = 'Engine Displacement,L',ylab='MPG')
+lines(w,z, col='red')
 ```
 
 ### include transmission in the equation:
