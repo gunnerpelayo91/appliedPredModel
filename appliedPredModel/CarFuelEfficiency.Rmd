@@ -1,0 +1,191 @@
+---
+title: "Fuel Economy Regression Modeling"
+author: "Carlos Pelayo"
+date: "3/13/2020"
+output: html_document
+---
+
+# Introduction:
+Data are from the website http://fueleconomy.gov 
+This is a problem in modeling/prediction.
+The idea is this:  Fuel efficiency from 2010 and 2011 passenger cars and light trucks is provied.  Using data from 2010, find the best model to predict fuel effiency; fit the model using data from 2010, and evaluate model performance using 2011 data.  
+
+# Questions:  
+# 1. Is there evidence of an improvement in fuel efficiency from 2010 to 2011?  
+  There is no evidence that their is an improvement of fuel efficiency from 2010 to 2011. This known because of such a small p-value when the T-Test is conducted. Although there is no difference between 2010 and 2011, there is a difference in fuel efficiency in 2012.
+    
+# 2. What variables are most significant predictors of fuel efficienty?  
+  The most significant predictors of fuel efficiency are engine displacement at the drive type description.
+  
+# 3. Suggest ways in which fuel efficienty could be improved in future years.
+  A way to improve fuel efficiency in future years is to have a vehicle that has a front-two wheel. Using the ANOVA model, we discovered, that the factor with the largest positive signifcant effect is the type of drive the vehicle has. Anoter way to improve fuel efficiency is to decrease the engine displacement of the vehicle.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(AppliedPredictiveModeling)
+library(dplyr)
+```
+
+
+
+```{r}
+data(FuelEconomy)
+library(lattice)
+```
+## Plot shown in the text:
+
+```{r}
+cars2010 <- cars2010[order(cars2010$EngDispl),]
+cars2011 <- cars2011[order(cars2011$EngDispl),]
+cars2012 <- cars2012[order(cars2012$EngDispl),]
+cars2010a <- cars2010
+cars2010a$Year <- "2010 Model Year"
+cars2011a <- cars2011
+cars2011a$Year <- "2011 Model Year"
+cars2012a <- cars2012
+cars2012a$Year <- "2012 Model Year"
+
+plotData <- rbind(cars2010a, cars2011a,cars2012a)
+plotTheme <- bookTheme(TRUE)
+plotTheme$plot.symbol$col <- rgb(.2, .2, .2, .5)
+plotTheme$plot.symbol$cex <- 0.75
+trellis.par.set(plotTheme)
+xyplot(FE ~ EngDispl|Year, plotData,
+xlab = "Engine Displacement",
+ylab = "Fuel Efficiency (MPG)",
+between = list(x = 1.2))
+```
+
+## difference in mean fuel efficiency 2010 to 2011 to 2012
+
+$H_0$: no difference between FE in 2010 and 2011  
+$H_A$: there is a difference in FE for years 2010 and 2011
+
+We'll use a t-test for this inference:
+
+```{r}
+t.test(cars2010a$FE, cars2011a$FE)
+t.test(cars2010a$FE,cars2012a$FE)
+t.test(cars2011a$FE,cars2012a$FE)
+
+hist(cars2010a$FE)
+hist(cars2011a$FE)
+hist(cars2012a$FE)
+```
+## difference in mean fuel efficiency 2010 to 2011
+
+$H_0$: no difference between FE in 2010 and 2011
+$H_A$: there is a difference in FE for years 2010 and 2011
+
+We'll use a t-test for this inference:
+
+Question #1:
+
+### variables in the data set:
+
+```{r}
+names(cars2010a)
+```
+
+## compare average fuel efficiency for 2011 cars using model1 to fuel efficiency for all cars in 2010
+
+```{r}
+model1 = glm(FE~ EngDispl, data=cars2010a)
+summary(model1)
+plot(cars2010a$EngDispl, cars2010a$FE, xlab = 'Engine Displacement, L', ylab = 'Fuel Efficiency, MPG')
+abline(model1, col='red')
+```
+
+
+### how does this fit model year 2011?
+```{r}
+plot(cars2011a$EngDispl, cars2011a$FE, xlab = 'Engine Displacement,L',ylab='MPG')
+x = cars2011a$EngDispl
+y = model1$coefficients[1] + model1$coefficients[2]*x
+lines(x,y, col='red')
+```
+
+```{r}
+model2 = glm(FE~ EngDispl + I(EngDispl^2), data = cars2010a)
+
+summary(model2)
+
+w = cars2011a$EngDispl
+z = model2$coefficients[1] + model2$coefficients[2]*x+model2$coefficients[3]*x^2
+plot(cars2011a$EngDispl, cars2011a$FE, xlab = 'Engine Displacement,L',ylab='MPG')
+lines(w,z, col='red')
+```
+
+### include transmission in the equation:
+
+```{r}
+levels(cars2010a$Transmission)
+model3 = glm(FE~ EngDispl+Transmission, data = cars2010a)
+summary(model3)
+
+```
+
+### predictions
+```{r}
+plot(cars2011a$EngDispl, cars2011a$FE, ylab='MPG', xlab='Engine displacement, L')
+newData = cars2011a
+y = predict(model3, newdata = cars2011a)
+
+lines(cars2011a$EngDispl,y, col='grey')
+
+#fit a smooth line to y then plot
+ySmooth= glm(y~cars2011a$EngDispl)
+summary(ySmooth)
+abline(ySmooth, col='red')
+
+```
+
+Transmission effects ??
+
+```{r}
+model3AOV = aov(cars2010a$FE~cars2010a$Transmission)
+summary(model3AOV)
+TukeyHSD(model3AOV)
+```
+
+## ANOVA
+```{r}
+modelAnova = glm(FE~EngDispl+
+              NumCyl + Transmission+ AirAspirationMethod + NumGears+ TransLockup +TransCreeperGear + DriveDesc+ ExhaustValvesPerCyl+ VarValveTiming + VarValveLift,data=cars2010a)
+summary(modelAnova)
+anova(modelAnova)
+```
+
+
+```{r}
+modelAnova2 = glm(FE~EngDispl+NumCyl+Transmission+TransLockup +DriveDesc+ ExhaustValvesPerCyl+VarValveLift,data=cars2010a)
+summary(modelAnova2)
+anova(modelAnova2)
+```
+
+```{r}
+filtered2010=filter(cars2010a,DriveDesc== 'TwoWheelDriveFront'&  VarValveLift==1 & EngDispl>3)
+modelAnovaFinal = glm(FE~EngDispl,data=filtered2010)
+summary(modelAnovaFinal)
+anova(modelAnovaFinal)
+```
+
+make a prediction for 2011
+
+```{r}
+pred2011 = predict(modelAnova2, cars2011a)
+pred2011a=predict(modelAnovaFinal,cars2011a)
+hist(pred2011)
+boxplot(pred2011, main='data from 2011\nmodelall')
+```
+
+```{r}
+t.test(cars2011a$FE, pred2011)
+```
+###Average Efficiency
+```{r}
+print(mean(pred2011))
+print(mean(pred2011a))
+```
+
